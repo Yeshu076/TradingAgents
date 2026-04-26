@@ -1,1 +1,8 @@
 .
+apscheduler>=3.10.0
+
+redis>=5.0.0
+rank_bm25
+
+vectorbt
+yfinance

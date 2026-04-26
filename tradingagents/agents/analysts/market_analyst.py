@@ -1,9 +1,18 @@
+"""
+Module: market_analyst.py
+Part of the analysts subsystem.
+
+This module contains logic for the analysts operations as part of the broader TradingAgents framework.
+"""
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 import time
 import json
 from tradingagents.agents.utils.agent_utils import (
     build_instrument_context,
+    get_crypto_derivatives_snapshot,
+    get_market_snapshot,
     get_indicators,
+    get_option_chain_snapshot,
     get_stock_data,
 )
 from tradingagents.dataflows.config import get_config
@@ -13,12 +22,25 @@ def create_market_analyst(llm):
 
     def market_analyst_node(state):
         current_date = state["trade_date"]
-        instrument_context = build_instrument_context(state["company_of_interest"])
+        instrument_type = state.get("instrument_type", "equity")
+        instrument_context = build_instrument_context(
+            state["company_of_interest"],
+            instrument_type,
+            state.get("instrument_metadata", {}),
+        )
 
         tools = [
             get_stock_data,
             get_indicators,
         ]
+
+        # Multi-asset tool augmentation (forex/crypto/options).
+        if instrument_type in ("forex", "crypto", "options"):
+            tools.append(get_market_snapshot)
+        if instrument_type == "crypto":
+            tools.append(get_crypto_derivatives_snapshot)
+        if instrument_type == "options":
+            tools.append(get_option_chain_snapshot)
 
         system_message = (
             """You are a trading assistant tasked with analyzing financial markets. Your role is to select the **most relevant indicators** for a given market condition or trading strategy from the following list. The goal is to choose up to **8 indicators** that provide complementary insights without redundancy. Categories and each category's indicators are:

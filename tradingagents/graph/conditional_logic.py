@@ -1,3 +1,9 @@
+"""
+Module: conditional_logic.py
+Part of the graph subsystem.
+
+This module contains logic for the graph operations as part of the broader TradingAgents framework.
+"""
 # TradingAgents/graph/conditional_logic.py
 
 from tradingagents.agents.utils.agent_states import AgentState

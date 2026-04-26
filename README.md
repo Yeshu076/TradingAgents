@@ -132,6 +132,66 @@ export ALPHA_VANTAGE_API_KEY=...   # Alpha Vantage
 
 For local models, configure Ollama with `llm_provider: "ollama"` in your config.
 
+For production multi-asset routing used in this workspace:
+
+```bash
+# Delta Exchange (crypto derivatives snapshot provider)
+export DELTA_REST_BASE_URL=https://api.india.delta.exchange
+export DELTA_API_KEY=...
+export DELTA_API_SECRET=...
+
+# Dhan (Nifty options chain provider)
+export DHAN_CLIENT_ID=...
+export DHAN_ACCESS_TOKEN=...
+
+# Optional Nifty underlying overrides
+export DHAN_NIFTY_SECURITY_ID=13
+export DHAN_NIFTY_UNDERLYING_SEGMENT=IDX_I
+
+# Execution guardrails (safe defaults)
+export TRADINGAGENTS_ALLOW_LIVE=false
+export TRADINGAGENTS_MAX_ORDER_QTY=25
+export TRADINGAGENTS_MAX_ORDER_NOTIONAL=500000
+export TRADINGAGENTS_MAX_DAILY_TRADES=50
+export TRADINGAGENTS_ALLOWED_INSTRUMENTS=options,spot,crypto,forex,equity
+export TRADINGAGENTS_ENFORCE_MARKET_HOURS=true
+
+# Deterministic pre-execution risk gate
+export TRADINGAGENTS_RISK_MIN_CONFIDENCE=0.40
+export TRADINGAGENTS_RISK_MIN_RR=1.20
+export TRADINGAGENTS_RISK_MAX_POSITION_PCT=0.15
+
+# Persistent local paper wallet
+export TRADINGAGENTS_PAPER_INITIAL_BALANCE=1000000
+export TRADINGAGENTS_PAPER_STATE_FILE=paper_wallet.json
+
+# Execution idempotency (duplicate protection)
+export TRADINGAGENTS_EXECUTION_IDEMPOTENCY_ENABLED=true
+export TRADINGAGENTS_EXECUTION_IDEMPOTENCY_WINDOW_SECONDS=3600
+export TRADINGAGENTS_EXECUTION_IDEMPOTENCY_SCAN_LIMIT=1000
+
+# Broker/API resilience
+export TRADINGAGENTS_RETRY_MAX_ATTEMPTS=3
+export TRADINGAGENTS_RETRY_BASE_DELAY_SECONDS=0.25
+export TRADINGAGENTS_RETRY_MAX_DELAY_SECONDS=2.0
+export TRADINGAGENTS_RETRY_JITTER_RATIO=0.15
+export TRADINGAGENTS_CIRCUIT_FAILURE_THRESHOLD=3
+export TRADINGAGENTS_CIRCUIT_RESET_SECONDS=60
+export TRADINGAGENTS_HTTP_TIMEOUT_SECONDS=15
+
+# Append-only decision journal
+export TRADINGAGENTS_DECISION_JOURNAL_FILE=trade_decisions.jsonl
+export TRADINGAGENTS_DECISION_JOURNAL_ROTATE_DAILY=true
+export TRADINGAGENTS_DECISION_JOURNAL_MAX_BYTES=5000000
+export TRADINGAGENTS_DECISION_JOURNAL_MAX_ROLL_FILES=5
+```
+
+Default routing now prefers:
+- Crypto derivatives: `delta,binance,bybit`
+- Options chain: `dhan,yfinance`
+
+You can override these in `DEFAULT_CONFIG["data_vendors"]` or runtime config.
+
 Alternatively, copy `.env.example` to `.env` and fill in your keys:
 ```bash
 cp .env.example .env
@@ -145,6 +205,51 @@ tradingagents          # installed command
 python -m cli.main     # alternative: run directly from source
 ```
 You will see a screen where you can select your desired tickers, analysis date, LLM provider, research depth, and more.
+
+Non-interactive production commands:
+
+```bash
+# Place/manage options and spot trades (paper mode by default)
+tradingagents trade --symbol NIFTY25SEP24500CE --instrument-type options --signal BUY --quantity 1
+
+# Intentionally place repeated order (bypass idempotency for this invocation)
+tradingagents trade --symbol NIFTY25SEP24500CE --instrument-type options --signal BUY --quantity 1 --allow-duplicates
+
+# Live mode requires TRADINGAGENTS_ALLOW_LIVE=true and broker credentials
+tradingagents trade --symbol NIFTY25SEP24500CE --instrument-type options --signal BUY --quantity 1 --live
+
+# Execute latest saved reports/*/order_intent.json in one step
+tradingagents execute-latest-intent --ticker NIFTY --reports-root reports
+
+# Run repeated execution cycles from latest order_intent (paper/live)
+tradingagents run-cycles --cycles 5 --every-seconds 30 --ticker NIFTY --reports-root reports
+
+# Resume an interrupted cycle run from saved state (default behavior)
+tradingagents run-cycles --cycles 5 --ticker NIFTY --reports-root reports --resume
+
+# Force a clean restart and ignore prior cycle state
+tradingagents run-cycles --cycles 5 --ticker NIFTY --reports-root reports --force-restart
+
+# Inspect persistent paper wallet snapshot
+tradingagents trade --show-wallet
+
+# Inspect latest decision journal entries
+tradingagents show-journal --limit 30
+
+# End-of-day summary from journal (today UTC or explicit date)
+tradingagents daily-summary
+tradingagents daily-summary --day-utc 2026-03-28
+
+# Runtime operations dashboard (wallet + today's execution count + recent journal)
+tradingagents runtime-status --journal-limit 10
+
+# Reset paper wallet explicitly (requires confirmation flag)
+tradingagents reset-wallet --yes
+```
+
+Notes:
+- For Dhan options live orders, `security_id` is auto-resolved when possible from option chain.
+- If auto-resolution cannot infer the contract, pass `--security-id` explicitly.
 
 <p align="center">
   <img src="assets/cli/cli_init.png" width="100%" style="display: inline-block; margin: 0 2%;">

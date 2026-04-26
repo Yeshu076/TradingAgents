@@ -1,3 +1,9 @@
+"""
+Module: reflection.py
+Part of the graph subsystem.
+
+This module contains logic for the graph operations as part of the broader TradingAgents framework.
+"""
 # TradingAgents/graph/reflection.py
 
 from typing import Dict, Any

@@ -1,3 +1,9 @@
+"""
+Module: utils.py
+Part of the dataflows subsystem.
+
+This module contains logic for the dataflows operations as part of the broader TradingAgents framework.
+"""
 import os
 import json
 import pandas as pd

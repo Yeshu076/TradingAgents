@@ -1,3 +1,9 @@
+"""
+Module: setup.py
+Part of the graph subsystem.
+
+This module contains logic for the graph operations as part of the broader TradingAgents framework.
+"""
 # TradingAgents/graph/setup.py
 
 from typing import Dict, Any
@@ -104,19 +110,22 @@ class GraphSetup:
         portfolio_manager_node = create_portfolio_manager(
             self.deep_thinking_llm, self.portfolio_manager_memory
         )
+        macro_analyst_node = create_macro_analyst(self.quick_thinking_llm)
+        capital_allocator_node = create_capital_allocator_agent(self.deep_thinking_llm)
 
         # Create workflow
         workflow = StateGraph(AgentState)
 
         # Add analyst nodes to the graph
         for analyst_type, node in analyst_nodes.items():
-            workflow.add_node(f"{analyst_type.capitalize()} Analyst", node)
+            workflow.add_node(f"{analyst_type.capitalize()} Analyst", node)     
             workflow.add_node(
                 f"Msg Clear {analyst_type.capitalize()}", delete_nodes[analyst_type]
             )
             workflow.add_node(f"tools_{analyst_type}", tool_nodes[analyst_type])
 
         # Add other nodes
+        workflow.add_node("Macro Analyst", macro_analyst_node)
         workflow.add_node("Bull Researcher", bull_researcher_node)
         workflow.add_node("Bear Researcher", bear_researcher_node)
         workflow.add_node("Research Manager", research_manager_node)
@@ -125,11 +134,13 @@ class GraphSetup:
         workflow.add_node("Neutral Analyst", neutral_analyst)
         workflow.add_node("Conservative Analyst", conservative_analyst)
         workflow.add_node("Portfolio Manager", portfolio_manager_node)
+        workflow.add_node("Capital Allocator", capital_allocator_node)
 
         # Define edges
-        # Start with the first analyst
+        # Start with the first analyst (after Macro)
+        workflow.add_edge(START, "Macro Analyst")
         first_analyst = selected_analysts[0]
-        workflow.add_edge(START, f"{first_analyst.capitalize()} Analyst")
+        workflow.add_edge("Macro Analyst", f"{first_analyst.capitalize()} Analyst")
 
         # Connect analysts in sequence
         for i, analyst_type in enumerate(selected_analysts):
@@ -196,7 +207,8 @@ class GraphSetup:
             },
         )
 
-        workflow.add_edge("Portfolio Manager", END)
+        workflow.add_edge("Portfolio Manager", "Capital Allocator")
+        workflow.add_edge("Capital Allocator", END)
 
         # Compile and return
         return workflow.compile()

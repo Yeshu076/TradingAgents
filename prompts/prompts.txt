@@ -1,0 +1,235 @@
+Use the workspace rule and improve-python-trading-system workflow.
+
+Go through the entire project carefully and do not make any code changes in this pass.
+
+This is a Python-based autonomous multi-agent algo trading system.
+Treat it as real-money-sensitive software.
+
+My target system is:
+- Crypto via Delta Exchange
+- XAUUSD via MT5
+- Nifty options via Dhan
+
+Your task is to deeply inspect the repository and produce a production-readiness audit.
+
+Please do all of the following:
+
+1. Scan the full repository structure.
+2. Identify the main entry points, packages, modules, and important files.
+3. Explain the current architecture and end-to-end flow.
+4. Identify how the code currently handles:
+   - agents and orchestration
+   - strategy and signal generation
+   - risk management
+   - broker adapters
+   - execution
+   - logging
+   - configuration
+   - persistence/state
+   - testing
+   - documentation
+5. Identify missing production-grade components.
+6. Identify architecture problems, unsafe patterns, and coupling issues.
+7. Identify missing tests, weak test areas, and failure-path gaps.
+8. Identify missing docs and unclear setup/operational areas.
+9. Identify trading-risk gaps, execution-risk gaps, and broker-risk gaps.
+10. Rank the top 10 issues by impact and urgency.
+
+Output format:
+- Project map
+- Architecture summary
+- Strengths
+- Critical risks
+- Top 10 ranked gaps
+- Missing tests
+- Missing docs
+- Best next implementation task
+
+Important constraints:
+- do not edit code
+- do not give generic advice
+- mention files/modules wherever possible
+- clearly state assumptions if something is unclear
+
+
+
+Use the workspace rule and improve-python-trading-system workflow.
+
+Perform a detailed gap analysis for this Python multi-agent trading system.
+
+Current state:
+- existing repository implementation
+- inspired by TradingAgents architecture
+- Python-based
+- intended to evolve into a production-grade autonomous trading platform
+
+Target future state:
+- autonomous multi-agent trading system
+- Crypto via Delta Exchange
+- XAUUSD via MT5
+- Nifty options via Dhan
+- production-grade reliability, safety, observability, and maintainability
+
+Your task:
+1. map the current capabilities of the repository
+2. map the required capabilities for the target state
+3. identify what is missing, weak, incomplete, or unsafe
+4. classify each gap into one of these categories:
+   - architecture
+   - agent orchestration
+   - strategy/signal layer
+   - risk management
+   - broker integration
+   - execution engine
+   - reconciliation
+   - observability
+   - testing
+   - documentation
+   - deployment/operations
+5. for each gap provide:
+   - gap title
+   - severity: critical / high / medium / low
+   - business/trading impact
+   - technical risk if ignored
+   - likely affected files/modules
+   - recommended approach
+   - effort: low / medium / high
+6. identify quick wins:
+   - high impact, low effort improvements
+7. identify strategic gaps:
+   - high impact, high effort improvements
+8. rank the top 10 gaps in priority order
+9. recommend the single best next gap to close first
+
+Output format:
+- Current vs target state summary
+- Gap register
+- Quick wins
+- Strategic gaps
+- Top 10 ranked priorities
+- Best next task
+
+Constraints:
+- do not edit code in this pass
+- do not give generic advice
+- reference actual files/modules where possible
+- state assumptions clearly if something is missing
+
+
+
+
+
+
+Use the workspace rule and improve-python-trading-system workflow.
+
+Analyze this Python multi-agent trading repository and propose valuable new features.
+
+Context:
+- target brokers/platforms are Delta Exchange, MT5, and Dhan
+- target outcome is a production-grade autonomous trading platform
+- treat this as real-money-sensitive software
+
+Your task:
+1. understand the current capabilities of the repository
+2. identify missing high-value features that would materially improve the product
+3. separate features into:
+   - essential production features
+   - safety and risk features
+   - broker/exchange features
+   - agent intelligence features
+   - monitoring/ops features
+   - research/backtesting features
+   - developer productivity features
+4. for each feature include:
+   - feature name
+   - what problem it solves
+   - why it matters
+   - user/trading impact
+   - technical complexity
+   - affected modules/files
+   - dependencies or prerequisites
+   - suggested implementation approach
+   - required tests
+   - required docs
+5. rank the features by:
+   - highest business value
+   - highest trading safety value
+   - easiest quick win
+   - best long-term strategic feature
+6. recommend the best next feature to build now
+
+Output format:
+- Current capability summary
+- Feature ideas by category
+- Quick wins
+- High-value strategic features
+- Ranked feature backlog
+- Best next feature
+
+Constraints:
+- do not implement code yet
+- avoid generic “nice to have” fluff
+- prefer concrete, file-aware recommendations
+- prioritize features that improve reliability, safety, and execution quality first
+
+
+
+
+Take the best next implementation task from the audit and execute it.
+
+Requirements:
+- implement only one meaningful improvement in this cycle
+- keep changes modular and production-safe
+- preserve existing behavior unless the current behavior is unsafe
+- avoid unrelated refactoring
+- add or update tests
+- update Markdown documentation
+- add meaningful logging where useful
+- prefer config-driven behavior over hardcoded values
+
+Before coding:
+1. briefly restate the chosen task
+2. explain why it is the best next step
+3. mention the files/modules you plan to update
+
+Then implement the change.
+
+When finished, provide:
+- what changed
+- affected files
+- risks addressed
+- tests added or updated
+- docs added or updated
+- limitations or follow-up risks
+- next best task
+
+
+
+Continue with the next highest-impact safe improvement.
+
+Rules:
+- choose only one meaningful improvement
+- prioritize in this order:
+  1. risk management
+  2. execution correctness
+  3. broker reliability
+  4. observability
+  5. test coverage
+  6. documentation
+  7. architecture quality
+  8. strategy enhancements
+- keep changes incremental
+- add or update tests
+- update Markdown docs
+- stop after one completed task
+
+Before coding:
+- restate the improvement selected
+- explain why it is the best next step
+- mention which files/modules will be inspected or changed
+
+After coding:
+- summarize changes
+- list tests/docs updated
+- mention remaining risks
+- recommend the next task

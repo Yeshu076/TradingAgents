@@ -217,3 +217,14 @@ __marimo__/
 
 # Cache
 **/data_cache/
+
+# Runtime outputs
+eval_results/
+strategy_lab_results/
+reports/
+
+# Trade local db
+trade_decisions.jsonl
+trade_decisions.jsonl.*
+paper_wallet.json
+

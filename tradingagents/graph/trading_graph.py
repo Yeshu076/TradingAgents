@@ -1,6 +1,14 @@
+"""
+Module: trading_graph.py
+Part of the graph subsystem.
+
+This module contains logic for the graph operations as part of the broader TradingAgents framework.
+"""
 # TradingAgents/graph/trading_graph.py
 
 import os
+import time
+import threading
 from pathlib import Path
 import json
 from datetime import date
@@ -73,6 +81,10 @@ class TradingAgentsGraph:
 
         # Initialize LLMs with provider-specific thinking configuration
         llm_kwargs = self._get_provider_kwargs()
+
+        # GAP-23: LLM request timeout — prevents hung agent nodes
+        _timeout_s = int(os.environ.get("TRADINGAGENTS_LLM_TIMEOUT_S", "60"))
+        llm_kwargs["request_timeout"] = _timeout_s
 
         # Add callbacks to kwargs if provided (passed to LLM constructor)
         if self.callbacks:
@@ -191,46 +203,134 @@ class TradingAgentsGraph:
             ),
         }
 
-    def propagate(self, company_name, trade_date):
-        """Run the trading agents graph for a company on a specific date."""
+    def propagate(self, company_name, trade_date, instrument_type: Optional[str] = None, instrument_metadata: Optional[Dict[str, Any]] = None):
+        """Run the trading agents graph for an instrument on a specific date."""
 
         self.ticker = company_name
 
+        # GAP-23: Per-cycle cost guard
+        max_cost_usd = float(os.environ.get("TRADINGAGENTS_MAX_LLM_COST_USD", "2.00"))
+        cycle_timeout_s = int(os.environ.get("TRADINGAGENTS_CYCLE_TIMEOUT_S", "600"))  # 10 min default
+
         # Initialize state
+        resolved_instrument_type = instrument_type or self.config.get("instrument_type", "equity")
+        resolved_instrument_metadata = instrument_metadata or self.config.get("instrument_metadata", {})
+        
+        # --- Inject Bot Telemetry ---
+        try:
+            import redis
+            import json
+            import os as _os
+            r = redis.Redis(
+                host=_os.getenv("REDIS_HOST", "localhost"), 
+                port=int(_os.getenv("REDIS_PORT", 6379)), 
+                password=_os.getenv("REDIS_PASSWORD"),
+                decode_responses=True
+            )
+            bot_telemetry = {}
+            for bot_key in ["TELEMETRY_dhan", "TELEMETRY_delta", "TELEMETRY_forex"]:
+                data = r.get(bot_key)
+                if data:
+                    bot_telemetry[bot_key.split('_')[1]] = json.loads(data)
+            
+            account_states = {}
+            for state_key in ["DHAN_ACCOUNT_STATE", "DELTA_ACCOUNT_STATE", "MT5_ACCOUNT_STATE"]:
+                data = r.get(state_key)
+                if data:
+                    account_states[state_key] = json.loads(data)
+
+            resolved_instrument_metadata["bot_telemetry"] = bot_telemetry
+            resolved_instrument_metadata["live_account_states"] = account_states
+        except Exception:
+            pass
+        # ----------------------------
+
         init_agent_state = self.propagator.create_initial_state(
-            company_name, trade_date
+            company_name,
+            trade_date,
+            instrument_type=resolved_instrument_type,
+            instrument_metadata=resolved_instrument_metadata,
         )
         args = self.propagator.get_graph_args()
 
-        if self.debug:
-            # Debug mode with tracing
-            trace = []
-            for chunk in self.graph.stream(init_agent_state, **args):
-                if len(chunk["messages"]) == 0:
-                    pass
+        # GAP-23: Graph invocation with cycle-level timeout
+        import logging as _log
+        _logger = _log.getLogger(__name__)
+        _result_holder: Dict[str, Any] = {}
+        _exc_holder: List[Exception] = []
+
+        def _run_graph():
+            try:
+                if self.debug:
+                    trace = []
+                    for chunk in self.graph.stream(init_agent_state, **args):
+                        if chunk.get("messages"):
+                            chunk["messages"][-1].pretty_print()
+                            trace.append(chunk)
+                    _result_holder["state"] = trace[-1] if trace else init_agent_state
                 else:
-                    chunk["messages"][-1].pretty_print()
-                    trace.append(chunk)
+                    _result_holder["state"] = self.graph.invoke(init_agent_state, **args)
+            except Exception as _e:
+                _exc_holder.append(_e)
 
-            final_state = trace[-1]
-        else:
-            # Standard mode without tracing
-            final_state = self.graph.invoke(init_agent_state, **args)
+        _t = threading.Thread(target=_run_graph, name=f"graph-{company_name}-{trade_date}", daemon=True)
+        _start = time.time()
+        _t.start()
+        _t.join(timeout=cycle_timeout_s)
 
+        if _t.is_alive():
+            _logger.error(
+                "[TIMEOUT] LLM graph cycle for %s exceeded %ds — returning HOLD.",
+                company_name, cycle_timeout_s,
+            )
+            # Return a minimal safe state with HOLD signal
+            _safe_state = dict(init_agent_state)
+            _safe_state.update({
+                "final_trade_decision": "HOLD",
+                "trader_investment_plan": "Cycle timed out — holding as safety measure.",
+                "investment_plan": "",
+                "order_intent": {"signal": "HOLD", "ticker": company_name},
+            })
+            self.curr_state = _safe_state
+            self._log_state(trade_date, _safe_state)
+            return _safe_state, "HOLD"
+
+        if _exc_holder:
+            raise _exc_holder[0]
+
+        elapsed = time.time() - _start
+        _logger.info("[GRAPH] %s cycle completed in %.1fs.", company_name, elapsed)
+
+        final_state = _result_holder.get("state", init_agent_state)
         # Store current state for reflection
         self.curr_state = final_state
+
+        # Attach structured order intent (non-breaking addition).
+        order_intent = self.signal_processor.extract_order_intent(
+            full_signal=final_state.get("final_trade_decision", ""),
+            trader_plan=final_state.get("trader_investment_plan", ""),
+            ticker=final_state.get("company_of_interest", ""),
+            instrument_type=final_state.get("instrument_type", self.config.get("instrument_type", "equity")),
+            analyst_teams=["market", "social", "news", "fundamentals"],
+            debate_rounds_used=final_state.get("risk_debate_state", {}).get("count", 0),
+            research_depth=str(self.config.get("max_debate_rounds", "unknown")),
+            final_state=final_state,
+        )
+        final_state["order_intent"] = order_intent.model_dump()
 
         # Log state
         self._log_state(trade_date, final_state)
 
         # Return decision and processed signal
-        return final_state, self.process_signal(final_state["final_trade_decision"])
+        return final_state, order_intent.signal
 
     def _log_state(self, trade_date, final_state):
         """Log the final state to a JSON file."""
         self.log_states_dict[str(trade_date)] = {
             "company_of_interest": final_state["company_of_interest"],
             "trade_date": final_state["trade_date"],
+            "instrument_type": final_state.get("instrument_type", self.config.get("instrument_type", "equity")),
+            "instrument_metadata": final_state.get("instrument_metadata", self.config.get("instrument_metadata", {})),
             "market_report": final_state["market_report"],
             "sentiment_report": final_state["sentiment_report"],
             "news_report": final_state["news_report"],
@@ -256,6 +356,7 @@ class TradingAgentsGraph:
             },
             "investment_plan": final_state["investment_plan"],
             "final_trade_decision": final_state["final_trade_decision"],
+            "order_intent": final_state.get("order_intent", {}),
         }
 
         # Save to file

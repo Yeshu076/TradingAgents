@@ -1,3 +1,9 @@
+"""
+Module: base_client.py
+Part of the llm_clients subsystem.
+
+This module contains logic for the llm_clients operations as part of the broader TradingAgents framework.
+"""
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 

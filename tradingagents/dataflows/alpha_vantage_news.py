@@ -1,3 +1,9 @@
+"""
+Module: alpha_vantage_news.py
+Part of the dataflows subsystem.
+
+This module contains logic for the dataflows operations as part of the broader TradingAgents framework.
+"""
 from .alpha_vantage_common import _make_api_request, format_datetime_for_api
 
 def get_news(ticker, start_date, end_date) -> dict[str, str] | str:

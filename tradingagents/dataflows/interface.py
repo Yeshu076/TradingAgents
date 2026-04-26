@@ -1,3 +1,9 @@
+"""
+Module: interface.py
+Part of the dataflows subsystem.
+
+This module contains logic for the dataflows operations as part of the broader TradingAgents framework.
+"""
 from typing import Annotated
 
 # Import from vendor-specific modules
@@ -23,6 +29,13 @@ from .alpha_vantage import (
     get_global_news as get_alpha_vantage_global_news,
 )
 from .alpha_vantage_common import AlphaVantageRateLimitError
+from .crypto_derivatives import (
+    get_binance_crypto_derivatives_snapshot,
+    get_bybit_crypto_derivatives_snapshot,
+    get_delta_crypto_derivatives_snapshot,
+)
+from .option_chain_providers import get_yfinance_option_chain_snapshot
+from .dhan_option_chain import get_dhan_option_chain_snapshot
 
 # Configuration and routing logic
 from .config import get_config
@@ -57,12 +70,28 @@ TOOLS_CATEGORIES = {
             "get_global_news",
             "get_insider_transactions",
         ]
+    },
+    "crypto_derivatives": {
+        "description": "Crypto derivatives metrics such as funding, open interest, and basis",
+        "tools": [
+            "get_crypto_derivatives_snapshot",
+        ],
+    },
+    "options_chain": {
+        "description": "Options chain snapshots for equity/index options",
+        "tools": [
+            "get_option_chain_snapshot",
+        ],
     }
 }
 
 VENDOR_LIST = [
     "yfinance",
     "alpha_vantage",
+    "binance",
+    "bybit",
+    "delta",
+    "dhan",
 ]
 
 # Mapping of methods to their vendor-specific implementations
@@ -107,6 +136,17 @@ VENDOR_METHODS = {
         "alpha_vantage": get_alpha_vantage_insider_transactions,
         "yfinance": get_yfinance_insider_transactions,
     },
+    # crypto_derivatives
+    "get_crypto_derivatives_snapshot": {
+        "delta": get_delta_crypto_derivatives_snapshot,
+        "binance": get_binance_crypto_derivatives_snapshot,
+        "bybit": get_bybit_crypto_derivatives_snapshot,
+    },
+    # options_chain
+    "get_option_chain_snapshot": {
+        "dhan": get_dhan_option_chain_snapshot,
+        "yfinance": get_yfinance_option_chain_snapshot,
+    },
 }
 
 def get_category_for_method(method: str) -> str:
@@ -147,6 +187,7 @@ def route_to_vendor(method: str, *args, **kwargs):
         if vendor not in fallback_vendors:
             fallback_vendors.append(vendor)
 
+    errors = []
     for vendor in fallback_vendors:
         if vendor not in VENDOR_METHODS[method]:
             continue
@@ -157,6 +198,15 @@ def route_to_vendor(method: str, *args, **kwargs):
         try:
             return impl_func(*args, **kwargs)
         except AlphaVantageRateLimitError:
+            errors.append(f"{vendor}: AlphaVantageRateLimitError")
             continue  # Only rate limits trigger fallback
+        except Exception as exc:
+            # Continue to next configured vendor if available.
+            errors.append(f"{vendor}: {exc}")
+            continue
 
+    if errors:
+        raise RuntimeError(
+            f"No available vendor for '{method}'. Attempts: " + " | ".join(errors)
+        )
     raise RuntimeError(f"No available vendor for '{method}'")

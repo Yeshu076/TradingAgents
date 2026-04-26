@@ -1,9 +1,18 @@
+"""
+Module: y_finance.py
+Part of the dataflows subsystem.
+
+This module contains logic for the dataflows operations as part of the broader TradingAgents framework.
+"""
 from typing import Annotated
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import yfinance as yf
 import os
 from .stockstats_utils import StockstatsUtils, _clean_dataframe, yf_retry
+
+import redis
+import json
 
 def get_YFin_data_online(
     symbol: Annotated[str, "ticker symbol of the company"],
@@ -25,6 +34,35 @@ def get_YFin_data_online(
         return (
             f"No data found for symbol '{symbol}' between {start_date} and {end_date}"
         )
+
+    # REPLACEMENT LOGIC FOR EXACT EXECUTION ALIGNMENT VIA REDIS CACHE
+    try:
+        r = redis.Redis(
+            host=os.getenv("REDIS_HOST", "localhost"),
+            port=int(os.getenv("REDIS_PORT", 6379)),
+            password=os.getenv("REDIS_PASSWORD"),
+            decode_responses=True
+        )
+        
+        # Check matching
+        ltp = None
+        if "NIFTY" in symbol.upper():
+            cached_data = r.get("NIFTY_LTP")
+            if cached_data:
+                ltp = json.loads(cached_data).get("ltp")
+        elif symbol.upper() in ["BTC-USD", "ETH-USD", "XRP-USD"]:
+            cached_data = r.get("CRYPTO_LTP")
+            if cached_data:
+                parsed = json.loads(cached_data)
+                # Ensure it's for this symbol
+                if str(parsed.get("symbol", "")).replace("-", "") in symbol.replace("-", ""):
+                    ltp = parsed.get("mark_price")
+        
+        if ltp:
+            # Overwrite the latest close price so indicators align with execution bot's view
+            data.iloc[-1, data.columns.get_loc('Close')] = float(ltp)
+    except Exception:
+        pass
 
     # Remove timezone info from index for cleaner output
     if data.index.tz is not None:

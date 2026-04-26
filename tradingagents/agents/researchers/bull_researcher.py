@@ -1,3 +1,9 @@
+"""
+Module: bull_researcher.py
+Part of the researchers subsystem.
+
+This module contains logic for the researchers operations as part of the broader TradingAgents framework.
+"""
 from langchain_core.messages import AIMessage
 import time
 import json

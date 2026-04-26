@@ -1,3 +1,9 @@
+"""
+Module: default_config.py
+Part of the tradingagents subsystem.
+
+This module contains logic for the tradingagents operations as part of the broader TradingAgents framework.
+"""
 import os
 
 DEFAULT_CONFIG = {
@@ -8,10 +14,16 @@ DEFAULT_CONFIG = {
         "dataflows/data_cache",
     ),
     # LLM settings
-    "llm_provider": "openai",
-    "deep_think_llm": "gpt-5.2",
-    "quick_think_llm": "gpt-5-mini",
-    "backend_url": "https://api.openai.com/v1",
+    "llm_provider": "google",
+    "deep_think_llm": "gemini-3.1-pro-preview",
+    "quick_think_llm": "gemini-3.1-flash-lite-preview",
+    "backend_url": "",
+    # Market/instrument settings
+    # Supported values: equity, forex, crypto, options
+    "instrument_type": "equity",
+    # Optional metadata for derivatives/instrument-specific routing
+    # Example: {"exchange": "NSE", "underlying": "NIFTY", "expiry": "2026-04-30"}
+    "instrument_metadata": {},
     # Provider-specific thinking configuration
     "google_thinking_level": None,      # "high", "minimal", etc.
     "openai_reasoning_effort": None,    # "medium", "high", "low"
@@ -27,6 +39,8 @@ DEFAULT_CONFIG = {
         "technical_indicators": "yfinance",  # Options: alpha_vantage, yfinance
         "fundamental_data": "yfinance",      # Options: alpha_vantage, yfinance
         "news_data": "yfinance",             # Options: alpha_vantage, yfinance
+        "crypto_derivatives": "delta,binance,bybit",  # Preferred fallback chain for crypto derivatives
+        "options_chain": "dhan,yfinance",  # Use Dhan for Nifty options, fallback to yfinance
     },
     # Tool-level configuration (takes precedence over category-level)
     "tool_vendors": {

@@ -1,3 +1,9 @@
+"""
+Module: propagation.py
+Part of the graph subsystem.
+
+This module contains logic for the graph operations as part of the broader TradingAgents framework.
+"""
 # TradingAgents/graph/propagation.py
 
 from typing import Dict, Any, List, Optional
@@ -16,13 +22,19 @@ class Propagator:
         self.max_recur_limit = max_recur_limit
 
     def create_initial_state(
-        self, company_name: str, trade_date: str
+        self,
+        company_name: str,
+        trade_date: str,
+        instrument_type: str = "equity",
+        instrument_metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Create the initial state for the agent graph."""
         return {
             "messages": [("human", company_name)],
             "company_of_interest": company_name,
             "trade_date": str(trade_date),
+            "instrument_type": instrument_type,
+            "instrument_metadata": instrument_metadata or {},
             "investment_debate_state": InvestDebateState(
                 {
                     "bull_history": "",

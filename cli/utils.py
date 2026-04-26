@@ -42,6 +42,33 @@ def normalize_ticker_symbol(ticker: str) -> str:
     return ticker.strip().upper()
 
 
+def select_instrument_type() -> str:
+    """Select market instrument type for analysis."""
+    choice = questionary.select(
+        "Select Instrument Type:",
+        choices=[
+            questionary.Choice("Equity", "equity"),
+            questionary.Choice("Forex", "forex"),
+            questionary.Choice("Crypto", "crypto"),
+            questionary.Choice("Options (e.g., Nifty options)", "options"),
+        ],
+        instruction="\n- Use arrow keys to navigate\n- Press Enter to select",
+        style=questionary.Style(
+            [
+                ("selected", "fg:green noinherit"),
+                ("highlighted", "fg:green noinherit"),
+                ("pointer", "fg:green noinherit"),
+            ]
+        ),
+    ).ask()
+
+    if choice is None:
+        console.print("\n[red]No instrument type selected. Exiting...[/red]")
+        exit(1)
+
+    return choice
+
+
 def get_analysis_date() -> str:
     """Prompt the user to enter a date in YYYY-MM-DD format."""
     import re

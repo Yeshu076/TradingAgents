@@ -1,0 +1,88 @@
+version: '3.8'
+
+x-logging:
+  &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  redis-message-bus:
+    image: redis:7
+    container_name: trading_redis_bus
+    command: redis-server --requirepass ${REDIS_PASSWORD:-securetradingpassword}
+    ports:
+      - "6379:6379"
+    restart: always
+    logging: *default-logging
+
+  # 1. Master Strategy & Quant Coordinator
+  trading-firm-daemon:
+    build: .
+    container_name: trading_agents_daemon
+    restart: always
+    depends_on:
+      - redis-message-bus
+    env_file:
+      - .env
+    volumes:
+      - ./reports:/app/reports
+      - ./dataflows/data_cache:/app/dataflows/data_cache
+      - ./strategy_lab_results:/app/strategy_lab_results
+      - ./eval_results:/app/eval_results
+    logging: *default-logging
+    # Using the new entrypoint. It routes through time-zone aware ops daemon    
+    command: ["python", "run_daemon.py", "--symbols", "NIFTY50.NS,XAUUSD,BTC-USD", "--debug"]
+
+  # 2. RAG Trade Settlement Journal
+  trading-rag-ingestion:
+    build: .
+    container_name: trading_rag_ingestion
+    restart: always
+    depends_on:
+      - redis-message-bus
+    env_file:
+      - .env
+    volumes:
+      - ./dataflows/persistent_memory:/app/dataflows/persistent_memory
+    logging: *default-logging
+    command: ["python", "rag_ingestion_service.py"]
+
+  # 3. Discord/Telegram Notifier
+  trading-notifier:
+    build: .
+    container_name: trading_notifier
+    restart: always
+    depends_on:
+      - redis-message-bus
+    env_file:
+      - .env
+    logging: *default-logging
+    command: ["python", "notifier.py"]
+
+  # 4. Observability Dashboard
+  trading-dashboard:
+    build: .
+    container_name: trading_dashboard
+    restart: always
+    depends_on:
+      - redis-message-bus
+    env_file:
+      - .env
+    ports:
+      - "8501:8501"
+    logging: *default-logging
+    command: ["python", "-m", "streamlit", "run", "dashboard.py", "--server.port=8501", "--server.address=0.0.0.0"]
+
+  # 5. Database & Memory Automated Backup
+  trading-backup-manager:
+    build: .
+    container_name: trading_backup_manager
+    restart: always
+    volumes:
+      - ./dataflows/persistent_memory:/app/dataflows/persistent_memory
+      - ./backups:/app/backups
+    logging: *default-logging
+    command: ["python", "backup_manager.py"]
+

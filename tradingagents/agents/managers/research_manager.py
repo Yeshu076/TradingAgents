@@ -1,3 +1,9 @@
+"""
+Module: research_manager.py
+Part of the managers subsystem.
+
+This module contains logic for the managers operations as part of the broader TradingAgents framework.
+"""
 import time
 import json
 
@@ -6,7 +12,11 @@ from tradingagents.agents.utils.agent_utils import build_instrument_context
 
 def create_research_manager(llm, memory):
     def research_manager_node(state) -> dict:
-        instrument_context = build_instrument_context(state["company_of_interest"])
+        instrument_context = build_instrument_context(
+            state["company_of_interest"],
+            state.get("instrument_type", "equity"),
+            state.get("instrument_metadata", {}),
+        )
         history = state["investment_debate_state"].get("history", "")
         market_research_report = state["market_report"]
         sentiment_report = state["sentiment_report"]
@@ -20,7 +30,7 @@ def create_research_manager(llm, memory):
 
         past_memory_str = ""
         for i, rec in enumerate(past_memories, 1):
-            past_memory_str += rec["recommendation"] + "\n\n"
+            past_memory_str += f"- Past Decision: {rec['recommendation']}\n- Outcome & PnL: {rec.get('outcome', 'Unknown')}\n\n"
 
         prompt = f"""As the portfolio manager and debate facilitator, your role is to critically evaluate this round of debate and make a definitive decision: align with the bear analyst, the bull analyst, or choose Hold only if it is strongly justified based on the arguments presented.
 

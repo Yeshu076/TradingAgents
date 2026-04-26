@@ -1,3 +1,9 @@
+"""
+Module: news_data_tools.py
+Part of the utils subsystem.
+
+This module contains logic for the utils operations as part of the broader TradingAgents framework.
+"""
 from langchain_core.tools import tool
 from typing import Annotated
 from tradingagents.dataflows.interface import route_to_vendor

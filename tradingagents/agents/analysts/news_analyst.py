@@ -1,3 +1,9 @@
+"""
+Module: news_analyst.py
+Part of the analysts subsystem.
+
+This module contains logic for the analysts operations as part of the broader TradingAgents framework.
+"""
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 import time
 import json
@@ -12,7 +18,11 @@ from tradingagents.dataflows.config import get_config
 def create_news_analyst(llm):
     def news_analyst_node(state):
         current_date = state["trade_date"]
-        instrument_context = build_instrument_context(state["company_of_interest"])
+        instrument_context = build_instrument_context(
+            state["company_of_interest"],
+            state.get("instrument_type", "equity"),
+            state.get("instrument_metadata", {}),
+        )
 
         tools = [
             get_news,
